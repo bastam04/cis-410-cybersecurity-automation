@@ -29,3 +29,10 @@ infrastructure as code, and cloud deployment.
 ## Fun Fact
 
 I like to collect physical media such as dvds and old video games from the 6th generation of home console hardware such as ps2/xbox/Nintendo DS era as I've never been much of a fan of reading but still have a bookshelf that needs to be filled
+
+## My Week 2 Infrastructure
+
+Runner VM: tamer-runner  
+Runner IP: 192.168.1.100  # fake ip
+
+Pipeline status: [![Hello Pipeline](https://github.com/bastam04/cis-410-cybersecurity-automation/actions/workflows/hello-pipeline.yml/badge.svg)](https://github.com/bastam04/cis-410-cybersecurity-automation/actions/workflows/hello-pipeline.yml)
