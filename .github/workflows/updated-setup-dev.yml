@@ -1,0 +1,98 @@
+name: Setup — Dev Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: Install Docker on Dev VM
+    runs-on: self-hosted
+
+    steps:
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "${{ secrets.DEV_USER }}"
+          test -n "${{ secrets.DEV_HOST }}"
+          test -n "${{ secrets.DEV_SSH_KEY }}"
+
+          echo "DEV_USER is set"
+          echo "DEV_HOST is set"
+          echo "DEV_SSH_KEY is set"
+
+      - name: Configure passwordless sudo
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/deploy_key <<'KEY'
+          ${{ secrets.DEV_SSH_KEY }}
+          KEY
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}" "set -e
+          if sudo -n true 2>/dev/null; then
+            echo '=== Passwordless sudo already configured — skipping ==='
+          else
+            echo '=== Configuring passwordless sudo ==='
+            echo '${{ secrets.SUDO_PASS }}' | sudo -S bash -c 'echo \"${{ secrets.DEV_USER }} ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/${{ secrets.DEV_USER }} && chmod 0440 /etc/sudoers.d/${{ secrets.DEV_USER }}'
+            echo '=== Passwordless sudo configured ==='
+          fi"
+
+          rm -f /tmp/deploy_key
+
+      - name: Install Docker on Dev VM
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/deploy_key <<'KEY'
+          ${{ secrets.DEV_SSH_KEY }}
+          KEY
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}" <<'EOF'
+          set -e
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "=== Docker not found — installing ==="
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sudo sh get-docker.sh
+            sudo usermod -aG docker "$(whoami)"
+            sudo mkdir -p /opt/app
+            sudo chown "$(whoami)":"$(whoami)" /opt/app
+            rm -f get-docker.sh
+            echo "=== Docker installed successfully ==="
+          else
+            echo "=== Docker already present — skipping install ==="
+            sudo mkdir -p /opt/app
+            sudo chown "$(whoami)":"$(whoami)" /opt/app
+          fi
+          EOF
+
+          rm -f /tmp/deploy_key
+
+      - name: Verify Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/deploy_key <<'KEY'
+          ${{ secrets.DEV_SSH_KEY }}
+          KEY
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}" <<'EOF'
+          set -e
+          echo "=== Logged in as: $(whoami) ==="
+          echo "=== Docker version ==="
+          docker --version
+          echo "=== Docker Compose version ==="
+          docker compose version
+          echo "=== Deployment directory ==="
+          ls -la /opt/app
+          echo "=== Dev server is ready for deployment ==="
+          EOF
+
+          rm -f /tmp/deploy_key
