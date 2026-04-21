@@ -11,7 +11,6 @@
 - **Semester:** 2nd
 
 ## Overview
-This repository is my CIS 410: CyberSecurity Automation portfolio.
 CI/CD pipeline project using Docker and GitHub Actions to build and deploy a containerized application with health endpoint validation.
 
 ## Tech Stack
