@@ -1,0 +1,59 @@
+name: Deploy to Cloud Run
+
+on:
+  workflow_dispatch:
+
+env:
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev
+  REPO: cis410-app
+  IMAGE: flask-app
+  SERVICE: cis410-flask-app
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${REGISTRY}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          PROJECT_ID=$(gcloud config get-value project)
+          IMAGE_PATH=${REGISTRY}/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}
+          docker build -t ${IMAGE_PATH} .
+          docker push ${IMAGE_PATH}
+          echo "IMAGE_PATH=${IMAGE_PATH}" >> $GITHUB_ENV
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${SERVICE} \
+            --image ${IMAGE_PATH} \
+            --region ${REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --max-instances 3 \
+            --quiet
+
+      - name: Print service URL
+        run: |
+          gcloud run services describe ${SERVICE} \
+            --region ${REGION} \
+            --format "value(status.url)"
